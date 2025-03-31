@@ -10,6 +10,7 @@ import {
 } from './ui/dropdown-menu';
 import { playSoundIfEnabled, toggleMute, isMuted } from '../utils/audioService';
 import { ChevronDown, Volume2, VolumeX, Lightbulb, RotateCcw } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 interface GameControlsProps {
   gameStatus: 'playing' | 'won' | 'draw';
