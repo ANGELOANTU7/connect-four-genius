@@ -314,7 +314,16 @@ export const getAIMove = (board: GameBoard, difficulty: DifficultyLevel): [numbe
 
 // Get hint for the player
 export const getHint = (board: GameBoard): [number, number] => {
-  return [-1, -1];
+  const availableMoves = getAvailableMoves(board);
+  
+  // If no valid moves, return [-1, -1]
+  if (availableMoves.length === 0) {
+    return [-1, -1];
+  }
+  
+  // Use minimax to find the best move for the player
+  const [_, bestMove] = minimax(board, 3, -Infinity, Infinity, true, 1);
+  return bestMove;
 };
 
 // Get the last calculated minimax tree

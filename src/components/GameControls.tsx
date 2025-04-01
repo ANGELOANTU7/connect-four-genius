@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { DifficultyLevel, Player } from '../utils/connectFourAI';
+import { Link } from 'react-router-dom';
+import { DifficultyLevel, Player } from '../utils/ticTacToeAI';
 import { Button } from './ui/button';
 import { 
   DropdownMenu, 
@@ -9,7 +10,7 @@ import {
   DropdownMenuTrigger 
 } from './ui/dropdown-menu';
 import { playSoundIfEnabled, toggleMute, isMuted } from '../utils/audioService';
-import { ChevronDown, Volume2, VolumeX, Lightbulb, RotateCcw, Network } from 'lucide-react';
+import { ChevronDown, Volume2, VolumeX, Lightbulb, RotateCcw, Network, ExternalLink } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface GameControlsProps {
@@ -49,8 +50,8 @@ const GameControls: React.FC<GameControlsProps> = ({
       return 'Game ended in a draw!';
     } else {
       return currentPlayer === 1 
-        ? 'Your turn (Red)' 
-        : 'AI is thinking... (Yellow)';
+        ? 'Your turn (X)' 
+        : 'AI is thinking... (O)';
     }
   };
   
@@ -69,7 +70,7 @@ const GameControls: React.FC<GameControlsProps> = ({
   return (
     <div className="w-full max-w-2xl p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div className="text-center sm:text-left">
-        <h2 className="text-xl font-bold text-primary mb-1">Connect Four</h2>
+        <h2 className="text-xl font-bold text-primary mb-1">Tic Tac Toe</h2>
         <p className={cn(
           "text-sm font-medium",
           gameStatus === 'won' && winner === 1 && "text-green-600 dark:text-green-400",
@@ -125,6 +126,17 @@ const GameControls: React.FC<GameControlsProps> = ({
             Tree
           </Button>
         )}
+        
+        {/* Link to full tree visualization */}
+        <Link to="/tree">
+          <Button 
+            variant="outline" 
+            size="sm"
+          >
+            <ExternalLink className="mr-1 h-4 w-4" />
+            Full Tree
+          </Button>
+        </Link>
         
         {/* Sound toggle */}
         <Button 

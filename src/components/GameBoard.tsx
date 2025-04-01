@@ -18,7 +18,6 @@ import {
 import { playSoundIfEnabled } from '../utils/audioService';
 import GameCell from './GameCell';
 import GameControls from './GameControls';
-import MinimaxTree from './MinimaxTree';
 
 const GameBoard: React.FC = () => {
   const [board, setBoard] = useState<GameBoardType>(createEmptyBoard());
@@ -30,11 +29,6 @@ const GameBoard: React.FC = () => {
   const [showHint, setShowHint] = useState<[number, number] | null>(null);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [lastMove, setLastMove] = useState<[number, number] | null>(null);
-  const [minimaxTree, setMinimaxTree] = useState<TreeNode | null>(null);
-  const [showMinimaxTree, setShowMinimaxTree] = useState<boolean>(true);
-
-  // Convert current board to string representation for tree node matching
-  const currentGameStateString = board.flat().join('');
 
   // Reset the game
   const resetGame = useCallback(() => {
@@ -45,7 +39,6 @@ const GameBoard: React.FC = () => {
     setWinningCells([]);
     setShowHint(null);
     setLastMove(null);
-    setMinimaxTree(null);
     resetMinimaxTree();
     playSoundIfEnabled('click');
   }, []);
@@ -91,9 +84,6 @@ const GameBoard: React.FC = () => {
       // Add a slight delay to simulate "thinking"
       const aiMoveTimeout = setTimeout(() => {
         const [row, col] = getAIMove(board, difficulty);
-        
-        // Capture the minimax tree after AI makes a decision
-        setMinimaxTree(getMinimaxTree());
         
         if (row !== -1 && col !== -1) {
           let newBoard = makeMove(board, row, col, 2);
@@ -141,73 +131,52 @@ const GameBoard: React.FC = () => {
     playSoundIfEnabled('click');
   }, []);
 
-  // Toggle minimax tree visibility
-  const toggleMinimaxTree = useCallback(() => {
-    setShowMinimaxTree(prev => !prev);
-    playSoundIfEnabled('click');
-  }, []);
-
   return (
-    <div className="flex flex-col md:flex-row items-start gap-4 w-full max-w-5xl mx-auto">
-      <div className="flex flex-col items-center w-full md:w-3/5">
-        <GameControls 
-          gameStatus={gameStatus} 
-          currentPlayer={currentPlayer} 
-          winner={winner} 
-          difficulty={difficulty} 
-          onReset={resetGame} 
-          onShowHint={handleShowHint} 
-          onDifficultyChange={handleDifficultyChange}
-          isAIThinking={isAIThinking}
-          onToggleMinimaxTree={toggleMinimaxTree}
-          showMinimaxTree={showMinimaxTree}
-        />
-        
-        <div className="w-full max-w-md mt-4 relative">
-          {/* Board frame */}
-          <div className="bg-gradient-to-b from-boardBlue to-boardBlueDark rounded-lg p-4 shadow-lg">
-            {/* Game grid */}
-            <div 
-              className="grid grid-cols-3 gap-1 bg-boardBlueDark rounded-md p-2 border-2 border-boardBlueDark"
-              role="grid"
-              aria-label="Tic Tac Toe game board"
-            >
-              {board.map((row, rowIndex) => (
-                row.map((cell, colIndex) => (
-                  <GameCell 
-                    key={`${rowIndex}-${colIndex}`}
-                    value={cell}
-                    isWinningCell={winningCells.some(([r, c]) => r === rowIndex && c === colIndex)}
-                    isLastMove={lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex}
-                    isHint={showHint && showHint[0] === rowIndex && showHint[1] === colIndex}
-                    onClick={() => handleCellClick(rowIndex, colIndex)}
-                  />
-                ))
-              ))}
-            </div>
+    <div className="flex flex-col items-center w-full max-w-5xl mx-auto">
+      <GameControls 
+        gameStatus={gameStatus} 
+        currentPlayer={currentPlayer} 
+        winner={winner} 
+        difficulty={difficulty} 
+        onReset={resetGame} 
+        onShowHint={handleShowHint} 
+        onDifficultyChange={handleDifficultyChange}
+        isAIThinking={isAIThinking}
+      />
+      
+      <div className="w-full max-w-md mt-4 relative">
+        {/* Board frame */}
+        <div className="bg-gradient-to-b from-boardBlue to-boardBlueDark rounded-lg p-4 shadow-lg">
+          {/* Game grid */}
+          <div 
+            className="grid grid-cols-3 gap-1 bg-boardBlueDark rounded-md p-2 border-2 border-boardBlueDark"
+            role="grid"
+            aria-label="Tic Tac Toe game board"
+          >
+            {board.map((row, rowIndex) => (
+              row.map((cell, colIndex) => (
+                <GameCell 
+                  key={`${rowIndex}-${colIndex}`}
+                  value={cell}
+                  isWinningCell={winningCells.some(([r, c]) => r === rowIndex && c === colIndex)}
+                  isLastMove={lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex}
+                  isHint={showHint && showHint[0] === rowIndex && showHint[1] === colIndex}
+                  onClick={() => handleCellClick(rowIndex, colIndex)}
+                />
+              ))
+            ))}
           </div>
         </div>
-        
-        {/* Game status message */}
-        {gameStatus === 'playing' && (
-          <div className="mt-4 text-sm text-gray-600 text-center">
-            {currentPlayer === 1 ? (
-              <p>Your turn! Click on a cell to place your X.</p>
-            ) : (
-              <p>AI is thinking...</p>
-            )}
-          </div>
-        )}
       </div>
       
-      {/* Minimax Tree Visualization */}
-      {showMinimaxTree && (
-        <div className="w-full md:w-2/5 mt-4 md:mt-0">
-          <MinimaxTree 
-            treeData={minimaxTree} 
-            maxDepth={3}
-            currentGameState={currentGameStateString}
-          />
+      {/* Game status message */}
+      {gameStatus === 'playing' && (
+        <div className="mt-4 text-sm text-gray-600 text-center">
+          {currentPlayer === 1 ? (
+            <p>Your turn! Click on a cell to place your X.</p>
+          ) : (
+            <p>AI is thinking...</p>
+          )}
         </div>
       )}
     </div>
