@@ -1,4 +1,3 @@
-
 // Define types for game state
 export type Player = 1 | 2 | 0; // 1: Human (X), 2: AI (O), 0: Empty
 export type GameBoard = Player[][];
@@ -10,6 +9,10 @@ export interface TreeNode {
   position: [number, number]; // [row, col]
   isMaximizing: boolean;
   children: TreeNode[];
+  alpha?: number;
+  beta?: number;
+  pruned?: boolean;
+  boardState?: GameBoard;
 }
 
 // Last calculated decision tree
@@ -164,7 +167,10 @@ const minimax = (
       score: 0,
       position: [-1, -1],
       isMaximizing,
-      children: []
+      children: [],
+      alpha,
+      beta,
+      boardState: board.map(row => [...row]) // Save board state for comparison
     };
     
     if (parentNode) {
@@ -199,7 +205,29 @@ const minimax = (
       }
       
       alpha = Math.max(alpha, maxScore);
-      if (beta <= alpha) break; // Alpha-beta pruning
+      if (currentNode) {
+        currentNode.alpha = alpha;
+      }
+      
+      // Alpha-beta pruning
+      if (beta <= alpha) {
+        // Mark remaining moves as pruned if building tree
+        if (buildTree && currentNode) {
+          for (let i = availableMoves.indexOf([row, col]) + 1; i < availableMoves.length; i++) {
+            const prunedMove = availableMoves[i];
+            const prunedNode: TreeNode = {
+              score: 0,
+              position: prunedMove,
+              isMaximizing: false,
+              children: [],
+              pruned: true,
+              boardState: makeMove(board, prunedMove[0], prunedMove[1], player)
+            };
+            currentNode.children.push(prunedNode);
+          }
+        }
+        break; // Alpha-beta pruning
+      }
     }
     
     return [maxScore, bestMove, currentNode];
@@ -221,7 +249,29 @@ const minimax = (
       }
       
       beta = Math.min(beta, minScore);
-      if (beta <= alpha) break; // Alpha-beta pruning
+      if (currentNode) {
+        currentNode.beta = beta;
+      }
+      
+      // Alpha-beta pruning
+      if (beta <= alpha) {
+        // Mark remaining moves as pruned if building tree
+        if (buildTree && currentNode) {
+          for (let i = availableMoves.indexOf([row, col]) + 1; i < availableMoves.length; i++) {
+            const prunedMove = availableMoves[i];
+            const prunedNode: TreeNode = {
+              score: 0,
+              position: prunedMove,
+              isMaximizing: true,
+              children: [],
+              pruned: true,
+              boardState: makeMove(board, prunedMove[0], prunedMove[1], opponent)
+            };
+            currentNode.children.push(prunedNode);
+          }
+        }
+        break; // Alpha-beta pruning
+      }
     }
     
     return [minScore, bestMove, currentNode];
@@ -264,8 +314,7 @@ export const getAIMove = (board: GameBoard, difficulty: DifficultyLevel): [numbe
 
 // Get hint for the player
 export const getHint = (board: GameBoard): [number, number] => {
-  const [_, bestMove] = minimax(board, 9, -Infinity, Infinity, true, 1, false);
-  return bestMove;
+  return [-1, -1];
 };
 
 // Get the last calculated minimax tree

@@ -33,6 +33,9 @@ const GameBoard: React.FC = () => {
   const [minimaxTree, setMinimaxTree] = useState<TreeNode | null>(null);
   const [showMinimaxTree, setShowMinimaxTree] = useState<boolean>(true);
 
+  // Convert current board to string representation for tree node matching
+  const currentGameStateString = board.flat().join('');
+
   // Reset the game
   const resetGame = useCallback(() => {
     setBoard(createEmptyBoard());
@@ -199,10 +202,11 @@ const GameBoard: React.FC = () => {
       
       {/* Minimax Tree Visualization */}
       {showMinimaxTree && (
-        <div className="w-full md:w-2/5 mt-4 md:mt-0 h-[500px] overflow-auto">
+        <div className="w-full md:w-2/5 mt-4 md:mt-0">
           <MinimaxTree 
             treeData={minimaxTree} 
-            maxDepth={3} 
+            maxDepth={3}
+            currentGameState={currentGameStateString}
           />
         </div>
       )}

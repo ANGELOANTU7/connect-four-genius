@@ -24,7 +24,7 @@ const GameCell: React.FC<GameCellProps> = ({
       onClick={onClick}
       className={cn(
         "aspect-square p-2 cursor-pointer bg-white/90 flex items-center justify-center",
-        "border-2 border-gray-300 transition-all duration-300",
+        "border-2 border-gray-300 transition-all duration-300 relative",
         isWinningCell && "bg-green-100",
         isLastMove && "bg-blue-50",
         isHint && "bg-yellow-100",
@@ -50,6 +50,17 @@ const GameCell: React.FC<GameCellProps> = ({
             isLastMove && !isWinningCell && "animate-in fade-in-50"
           )} 
         />
+      )}
+      
+      {/* Position indicator in corner */}
+      {value === 0 && (
+        <div className="absolute top-0 left-0 text-[8px] text-gray-400 p-0.5">
+          {React.Children.count(Array.from(document.querySelectorAll('[role="gridcell"]')).indexOf(document.activeElement as Element))}
+        </div>
+      )}
+      
+      {isLastMove && (
+        <div className="absolute top-0 right-0 w-3 h-3 bg-blue-500 rounded-full animate-pulse" />
       )}
     </div>
   );
