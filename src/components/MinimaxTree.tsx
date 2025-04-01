@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { ArrowDown } from 'lucide-react';
+import { X, Circle } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { TreeNode } from '../utils/connectFourAI';
+import { TreeNode } from '../utils/ticTacToeAI';
 
 interface MinimaxTreeProps {
   treeData: TreeNode | null;
@@ -11,7 +11,7 @@ interface MinimaxTreeProps {
 
 const MinimaxTree: React.FC<MinimaxTreeProps> = ({ 
   treeData, 
-  maxDepth = 2 
+  maxDepth = 3
 }) => {
   if (!treeData) {
     return (
@@ -30,13 +30,12 @@ const MinimaxTree: React.FC<MinimaxTreeProps> = ({
     if (depth > maxDepth) return null;
     
     // Calculate color based on score
-    let backgroundColor = 'bg-gray-100 dark:bg-gray-700';
-    if (node.score > 100) backgroundColor = 'bg-green-100 dark:bg-green-800';
-    if (node.score < -100) backgroundColor = 'bg-red-100 dark:bg-red-800';
-    if (node.score === Infinity) backgroundColor = 'bg-green-300 dark:bg-green-600';
-    if (node.score === -Infinity) backgroundColor = 'bg-red-300 dark:bg-red-600';
+    let scoreColor = 'text-gray-600 dark:text-gray-400';
+    if (node.score > 0) scoreColor = 'text-green-600 dark:text-green-400';
+    if (node.score < 0) scoreColor = 'text-red-600 dark:text-red-400';
     
     const hasChildren = node.children && node.children.length > 0 && depth < maxDepth;
+    const [row, col] = node.position;
     
     return (
       <div 
@@ -47,44 +46,50 @@ const MinimaxTree: React.FC<MinimaxTreeProps> = ({
         <div className="flex flex-col items-center">
           <div 
             className={cn(
-              "flex items-center justify-center w-10 h-10 rounded-md border-2 font-bold text-lg",
-              node.isMaximizing ? "border-yellow-500" : "border-red-500",
-              backgroundColor,
+              "flex items-center justify-center w-14 h-14 rounded-md border-2 font-bold",
+              node.isMaximizing ? "border-blue-500" : "border-red-500",
               isRoot && "ring-2 ring-primary"
             )}
           >
-            {node.column >= 0 ? node.column : '?'}
+            {row >= 0 && col >= 0 ? (
+              <div className="flex items-center justify-center">
+                <div className="text-xs absolute -top-5 left-1/2 transform -translate-x-1/2 font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">
+                  [{row}, {col}]
+                </div>
+                {node.isMaximizing ? (
+                  <Circle className="w-8 h-8 text-blue-500" />
+                ) : (
+                  <X className="w-8 h-8 text-red-500" />
+                )}
+              </div>
+            ) : (
+              <span className="text-gray-400">?</span>
+            )}
           </div>
           
-          <div className="text-xs font-mono mt-1 mb-1">
-            {node.score === Infinity ? "∞" : 
-             node.score === -Infinity ? "-∞" : 
-             node.score.toFixed(0)}
+          <div className={cn("text-xs font-mono mt-1 mb-1", scoreColor)}>
+            Score: {node.score}
           </div>
         </div>
         
         {/* Connection lines and children nodes */}
         {hasChildren && (
           <>
-            {/* Connection lines */}
-            <div className="w-full flex justify-center mb-2">
-              <div className="h-6 border-l-2 border-gray-300 dark:border-gray-600"></div>
-            </div>
+            {/* Connection line */}
+            <div className="h-6 border-l-2 border-gray-300 dark:border-gray-600"></div>
             
-            {/* Horizontal line connecting all children */}
-            <div className="flex flex-row items-start">
-              <div className="flex flex-row gap-4">
-                {node.children.map((child, childIndex) => (
-                  <div key={childIndex} className="flex flex-col items-center">
-                    {/* Horizontal line to sibling */}
-                    {childIndex > 0 && childIndex < node.children.length && (
-                      <div className="absolute h-0.5 bg-gray-300 dark:bg-gray-600" 
-                           style={{ width: '16px', transform: 'translateY(6px) translateX(-8px)' }}></div>
-                    )}
-                    {renderNode(child, depth + 1, childIndex)}
-                  </div>
-                ))}
-              </div>
+            {/* Children container */}
+            <div className="flex flex-row gap-6">
+              {node.children.map((child, childIndex) => (
+                <div key={childIndex} className="relative">
+                  {/* Horizontal line to connect siblings */}
+                  {childIndex > 0 && (
+                    <div className="absolute h-0.5 bg-gray-300 dark:bg-gray-600" 
+                         style={{ width: '24px', top: '-24px', left: '-24px' }}></div>
+                  )}
+                  {renderNode(child, depth + 1, childIndex)}
+                </div>
+              ))}
             </div>
           </>
         )}
@@ -95,20 +100,20 @@ const MinimaxTree: React.FC<MinimaxTreeProps> = ({
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md overflow-auto max-h-[500px]">
       <h3 className="text-lg font-medium mb-4">AI Decision Tree</h3>
-      <div className="flex justify-center">
+      <div className="flex justify-center pb-4">
         {renderNode(treeData, 0, 0, true)}
       </div>
       <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
         <p className="flex items-center">
-          <span className="inline-block w-3 h-3 border-2 border-yellow-500 mr-2"></span>
-          AI's turn (maximizing)
+          <span className="inline-block w-3 h-3 border-2 border-blue-500 mr-2"></span>
+          AI's turn (maximizing) - O
         </p>
         <p className="flex items-center">
           <span className="inline-block w-3 h-3 border-2 border-red-500 mr-2"></span>
-          Player's turn (minimizing)
+          Player's turn (minimizing) - X
         </p>
-        <p>Numbers inside boxes: Column choices</p>
-        <p>Numbers below boxes: Position scores</p>
+        <p>Position format: [row, column], starting from 0</p>
+        <p>Scores: Positive is good for AI, negative is good for player</p>
       </div>
     </div>
   );

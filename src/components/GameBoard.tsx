@@ -14,7 +14,7 @@ import {
   getMinimaxTree,
   resetMinimaxTree,
   TreeNode
-} from '../utils/connectFourAI';
+} from '../utils/ticTacToeAI';
 import { playSoundIfEnabled } from '../utils/audioService';
 import GameCell from './GameCell';
 import GameControls from './GameControls';
@@ -27,7 +27,7 @@ const GameBoard: React.FC = () => {
   const [winner, setWinner] = useState<Player | null>(null);
   const [winningCells, setWinningCells] = useState<[number, number][]>([]);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
-  const [showHint, setShowHint] = useState<number | null>(null);
+  const [showHint, setShowHint] = useState<[number, number] | null>(null);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [lastMove, setLastMove] = useState<[number, number] | null>(null);
   const [minimaxTree, setMinimaxTree] = useState<TreeNode | null>(null);
@@ -48,30 +48,13 @@ const GameBoard: React.FC = () => {
   }, []);
 
   // Handle human player move
-  const handleColumnClick = useCallback((col: number) => {
-    if (gameStatus !== 'playing' || currentPlayer !== 1 || isAIThinking) {
+  const handleCellClick = useCallback((row: number, col: number) => {
+    if (gameStatus !== 'playing' || currentPlayer !== 1 || isAIThinking || board[row][col] !== 0) {
       return;
     }
 
     // Make a copy of the board
-    let newBoard = [...board.map(row => [...row])];
-    
-    // Find the next available row
-    let row = -1;
-    for (let r = newBoard.length - 1; r >= 0; r--) {
-      if (newBoard[r][col] === 0) {
-        row = r;
-        break;
-      }
-    }
-    
-    // If column is full, do nothing
-    if (row === -1) {
-      return;
-    }
-    
-    // Place the piece
-    newBoard[row][col] = 1;
+    let newBoard = makeMove(board, row, col, 1);
     setLastMove([row, col]);
     setBoard(newBoard);
     playSoundIfEnabled('drop');
@@ -104,24 +87,14 @@ const GameBoard: React.FC = () => {
       
       // Add a slight delay to simulate "thinking"
       const aiMoveTimeout = setTimeout(() => {
-        const aiCol = getAIMove(board, difficulty);
+        const [row, col] = getAIMove(board, difficulty);
         
         // Capture the minimax tree after AI makes a decision
         setMinimaxTree(getMinimaxTree());
         
-        if (aiCol !== -1) {
-          let newBoard = makeMove(board, aiCol, 2);
-          
-          // Find row where piece was placed
-          let row = -1;
-          for (let r = 0; r < board.length; r++) {
-            if (board[r][aiCol] === 0 && newBoard[r][aiCol] === 2) {
-              row = r;
-              break;
-            }
-          }
-          
-          setLastMove([row, aiCol]);
+        if (row !== -1 && col !== -1) {
+          let newBoard = makeMove(board, row, col, 2);
+          setLastMove([row, col]);
           setBoard(newBoard);
           playSoundIfEnabled('drop');
           
@@ -153,8 +126,8 @@ const GameBoard: React.FC = () => {
   // Handle showing hints
   const handleShowHint = useCallback(() => {
     if (gameStatus === 'playing' && currentPlayer === 1) {
-      const hintCol = getHint(board);
-      setShowHint(hintCol);
+      const hintPos = getHint(board);
+      setShowHint(hintPos);
       playSoundIfEnabled('click');
     }
   }, [board, currentPlayer, gameStatus]);
@@ -187,30 +160,14 @@ const GameBoard: React.FC = () => {
           showMinimaxTree={showMinimaxTree}
         />
         
-        <div className="w-full max-w-2xl mt-4 relative">
+        <div className="w-full max-w-md mt-4 relative">
           {/* Board frame */}
           <div className="bg-gradient-to-b from-boardBlue to-boardBlueDark rounded-lg p-4 shadow-lg">
-            {/* Column hover indicators */}
-            <div className="grid grid-cols-7 mb-2">
-              {Array(7).fill(0).map((_, col) => (
-                <div 
-                  key={`indicator-${col}`} 
-                  className="flex justify-center"
-                >
-                  {gameStatus === 'playing' && currentPlayer === 1 && !isAIThinking && (
-                    <div 
-                      className={`w-2 h-6 ${showHint === col ? 'bg-yellow-300 animate-pulse' : 'bg-transparent'} rounded-b-full`}
-                    ></div>
-                  )}
-                </div>
-              ))}
-            </div>
-            
             {/* Game grid */}
             <div 
-              className="grid grid-cols-7 gap-1 bg-boardBlueDark rounded-md p-2 border-2 border-boardBlueDark"
+              className="grid grid-cols-3 gap-1 bg-boardBlueDark rounded-md p-2 border-2 border-boardBlueDark"
               role="grid"
-              aria-label="Connect Four game board"
+              aria-label="Tic Tac Toe game board"
             >
               {board.map((row, rowIndex) => (
                 row.map((cell, colIndex) => (
@@ -219,7 +176,8 @@ const GameBoard: React.FC = () => {
                     value={cell}
                     isWinningCell={winningCells.some(([r, c]) => r === rowIndex && c === colIndex)}
                     isLastMove={lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex}
-                    onClick={() => handleColumnClick(colIndex)}
+                    isHint={showHint && showHint[0] === rowIndex && showHint[1] === colIndex}
+                    onClick={() => handleCellClick(rowIndex, colIndex)}
                   />
                 ))
               ))}
@@ -227,11 +185,11 @@ const GameBoard: React.FC = () => {
           </div>
         </div>
         
-        {/* Tutorial message for new players */}
+        {/* Game status message */}
         {gameStatus === 'playing' && (
           <div className="mt-4 text-sm text-gray-600 text-center">
             {currentPlayer === 1 ? (
-              <p>Your turn! Click on a column to drop your piece.</p>
+              <p>Your turn! Click on a cell to place your X.</p>
             ) : (
               <p>AI is thinking...</p>
             )}
@@ -244,7 +202,7 @@ const GameBoard: React.FC = () => {
         <div className="w-full md:w-2/5 mt-4 md:mt-0 h-[500px] overflow-auto">
           <MinimaxTree 
             treeData={minimaxTree} 
-            maxDepth={difficulty === 'easy' ? 2 : difficulty === 'medium' ? 3 : 3} 
+            maxDepth={3} 
           />
         </div>
       )}
