@@ -4,6 +4,14 @@ export type Player = 1 | 2 | 0; // 1: Human (Red), 2: AI (Yellow), 0: Empty
 export type GameBoard = Player[][];
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
+// Tree visualization data structure
+export interface TreeNode {
+  score: number;
+  column: number;
+  isMaximizing: boolean;
+  children: TreeNode[];
+}
+
 // Constants
 const ROWS = 6;
 const COLS = 7;
@@ -12,6 +20,9 @@ const WIN_LENGTH = 4;
 // Scores for the minimax algorithm
 const WINNING_SCORE = 1000000;
 const LOSING_SCORE = -1000000;
+
+// Last calculated decision tree
+let lastCalculatedTree: TreeNode | null = null;
 
 // Initialize an empty game board
 export const createEmptyBoard = (): GameBoard => {
@@ -282,14 +293,35 @@ const minimax = (
   alpha: number, 
   beta: number, 
   isMaximizing: boolean, 
-  player: Player
-): [number, number] => {
+  player: Player,
+  buildTree = false,
+  parentNode: TreeNode | null = null
+): [number, number, TreeNode | null] => {
   const opponent = player === 1 ? 2 : 1;
   const validMoves = getValidMoves(board);
   
+  // Create a node for this state if building tree
+  let currentNode: TreeNode | null = null;
+  if (buildTree) {
+    currentNode = {
+      score: 0,
+      column: -1,
+      isMaximizing,
+      children: []
+    };
+    
+    if (parentNode) {
+      parentNode.children.push(currentNode);
+    }
+  }
+  
   // Terminal conditions
   if (depth === 0 || validMoves.length === 0 || checkWin(board, player) || checkWin(board, opponent)) {
-    return [evaluateBoard(board, player), -1];
+    const score = evaluateBoard(board, player);
+    if (currentNode) {
+      currentNode.score = score;
+    }
+    return [score, -1, currentNode];
   }
   
   if (isMaximizing) {
@@ -298,36 +330,44 @@ const minimax = (
     
     for (const col of validMoves) {
       const newBoard = makeMove(board, col, player);
-      const [score] = minimax(newBoard, depth - 1, alpha, beta, false, player);
+      const [score, _, childNode] = minimax(newBoard, depth - 1, alpha, beta, false, player, buildTree, currentNode);
       
       if (score > maxScore) {
         maxScore = score;
         bestCol = col;
+        if (currentNode) {
+          currentNode.score = score;
+          currentNode.column = col;
+        }
       }
       
       alpha = Math.max(alpha, maxScore);
       if (beta <= alpha) break; // Alpha-beta pruning
     }
     
-    return [maxScore, bestCol];
+    return [maxScore, bestCol, currentNode];
   } else {
     let minScore = Infinity;
     let bestCol = validMoves[0];
     
     for (const col of validMoves) {
       const newBoard = makeMove(board, col, opponent);
-      const [score] = minimax(newBoard, depth - 1, alpha, beta, true, player);
+      const [score, _, childNode] = minimax(newBoard, depth - 1, alpha, beta, true, player, buildTree, currentNode);
       
       if (score < minScore) {
         minScore = score;
         bestCol = col;
+        if (currentNode) {
+          currentNode.score = score;
+          currentNode.column = col;
+        }
       }
       
       beta = Math.min(beta, minScore);
       if (beta <= alpha) break; // Alpha-beta pruning
     }
     
-    return [minScore, bestCol];
+    return [minScore, bestCol, currentNode];
   }
 };
 
@@ -340,38 +380,48 @@ export const getAIMove = (board: GameBoard, difficulty: DifficultyLevel): number
     return -1;
   }
   
-  // Easy: Random move with 70% chance, smart move with 30% chance
+  // Determine depth based on difficulty
+  let depth = 2;
+  let buildTree = true;
+  
   if (difficulty === 'easy') {
+    depth = 2;
+    // Easy: Random move with 70% chance, smart move with 30% chance
     if (Math.random() < 0.7) {
       return validMoves[Math.floor(Math.random() * validMoves.length)];
     }
-    
-    // Depth = 2 for easy
-    const [_, bestCol] = minimax(board, 2, -Infinity, Infinity, true, 2);
-    return bestCol;
-  }
-  
-  // Medium: Random move with 30% chance, smart move with 70% chance
-  else if (difficulty === 'medium') {
+  } else if (difficulty === 'medium') {
+    depth = 3;
+    // Medium: Random move with 30% chance, smart move with 70% chance
     if (Math.random() < 0.3) {
       return validMoves[Math.floor(Math.random() * validMoves.length)];
     }
-    
-    // Depth = 3 for medium
-    const [_, bestCol] = minimax(board, 3, -Infinity, Infinity, true, 2);
-    return bestCol;
+  } else {
+    // Hard: Always make the best move
+    depth = 4;
   }
   
-  // Hard: Always make the best move
-  else {
-    // Depth = 5 for hard
-    const [_, bestCol] = minimax(board, 5, -Infinity, Infinity, true, 2);
-    return bestCol;
-  }
+  // Run minimax with tree building
+  const [_, bestCol, treeNode] = minimax(board, depth, -Infinity, Infinity, true, 2, buildTree);
+  
+  // Store the decision tree for visualization
+  lastCalculatedTree = treeNode;
+  
+  return bestCol;
 };
 
 // Get hint for the player
 export const getHint = (board: GameBoard): number => {
-  const [_, bestCol] = minimax(board, 3, -Infinity, Infinity, true, 1);
+  const [_, bestCol] = minimax(board, 3, -Infinity, Infinity, true, 1, false);
   return bestCol;
+};
+
+// Get the last calculated minimax tree
+export const getMinimaxTree = (): TreeNode | null => {
+  return lastCalculatedTree;
+};
+
+// Reset the minimax tree
+export const resetMinimaxTree = (): void => {
+  lastCalculatedTree = null;
 };

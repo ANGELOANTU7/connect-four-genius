@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger 
 } from './ui/dropdown-menu';
 import { playSoundIfEnabled, toggleMute, isMuted } from '../utils/audioService';
-import { ChevronDown, Volume2, VolumeX, Lightbulb, RotateCcw } from 'lucide-react';
+import { ChevronDown, Volume2, VolumeX, Lightbulb, RotateCcw, Network } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface GameControlsProps {
@@ -21,6 +21,8 @@ interface GameControlsProps {
   onReset: () => void;
   onShowHint: () => void;
   onDifficultyChange: (difficulty: DifficultyLevel) => void;
+  onToggleMinimaxTree?: () => void;
+  showMinimaxTree?: boolean;
 }
 
 const GameControls: React.FC<GameControlsProps> = ({
@@ -31,7 +33,9 @@ const GameControls: React.FC<GameControlsProps> = ({
   isAIThinking,
   onReset,
   onShowHint,
-  onDifficultyChange
+  onDifficultyChange,
+  onToggleMinimaxTree,
+  showMinimaxTree = true
 }) => {
   const [muted, setMuted] = useState(isMuted());
   
@@ -108,6 +112,19 @@ const GameControls: React.FC<GameControlsProps> = ({
           <Lightbulb className="mr-1 h-4 w-4" />
           Hint
         </Button>
+        
+        {/* Toggle minimax tree */}
+        {onToggleMinimaxTree && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={onToggleMinimaxTree}
+            className={showMinimaxTree ? "bg-blue-100 dark:bg-blue-900" : ""}
+          >
+            <Network className="mr-1 h-4 w-4" />
+            Tree
+          </Button>
+        )}
         
         {/* Sound toggle */}
         <Button 

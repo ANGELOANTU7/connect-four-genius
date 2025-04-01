@@ -10,12 +10,15 @@ import {
   isDraw, 
   findWinningCoordinates, 
   DifficultyLevel, 
-  getHint
+  getHint,
+  getMinimaxTree,
+  resetMinimaxTree,
+  TreeNode
 } from '../utils/connectFourAI';
 import { playSoundIfEnabled } from '../utils/audioService';
-import { Button } from './ui/button';
 import GameCell from './GameCell';
 import GameControls from './GameControls';
+import MinimaxTree from './MinimaxTree';
 
 const GameBoard: React.FC = () => {
   const [board, setBoard] = useState<GameBoardType>(createEmptyBoard());
@@ -27,6 +30,8 @@ const GameBoard: React.FC = () => {
   const [showHint, setShowHint] = useState<number | null>(null);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [lastMove, setLastMove] = useState<[number, number] | null>(null);
+  const [minimaxTree, setMinimaxTree] = useState<TreeNode | null>(null);
+  const [showMinimaxTree, setShowMinimaxTree] = useState<boolean>(true);
 
   // Reset the game
   const resetGame = useCallback(() => {
@@ -37,6 +42,8 @@ const GameBoard: React.FC = () => {
     setWinningCells([]);
     setShowHint(null);
     setLastMove(null);
+    setMinimaxTree(null);
+    resetMinimaxTree();
     playSoundIfEnabled('click');
   }, []);
 
@@ -99,6 +106,9 @@ const GameBoard: React.FC = () => {
       const aiMoveTimeout = setTimeout(() => {
         const aiCol = getAIMove(board, difficulty);
         
+        // Capture the minimax tree after AI makes a decision
+        setMinimaxTree(getMinimaxTree());
+        
         if (aiCol !== -1) {
           let newBoard = makeMove(board, aiCol, 2);
           
@@ -155,67 +165,87 @@ const GameBoard: React.FC = () => {
     playSoundIfEnabled('click');
   }, []);
 
+  // Toggle minimax tree visibility
+  const toggleMinimaxTree = useCallback(() => {
+    setShowMinimaxTree(prev => !prev);
+    playSoundIfEnabled('click');
+  }, []);
+
   return (
-    <div className="flex flex-col items-center w-full max-w-4xl mx-auto">
-      <GameControls 
-        gameStatus={gameStatus} 
-        currentPlayer={currentPlayer} 
-        winner={winner} 
-        difficulty={difficulty} 
-        onReset={resetGame} 
-        onShowHint={handleShowHint} 
-        onDifficultyChange={handleDifficultyChange}
-        isAIThinking={isAIThinking}
-      />
-      
-      <div className="w-full max-w-2xl mt-4 relative">
-        {/* Board frame */}
-        <div className="bg-gradient-to-b from-boardBlue to-boardBlueDark rounded-lg p-4 shadow-lg">
-          {/* Column hover indicators */}
-          <div className="grid grid-cols-7 mb-2">
-            {Array(7).fill(0).map((_, col) => (
-              <div 
-                key={`indicator-${col}`} 
-                className="flex justify-center"
-              >
-                {gameStatus === 'playing' && currentPlayer === 1 && !isAIThinking && (
-                  <div 
-                    className={`w-2 h-6 ${showHint === col ? 'bg-yellow-300 animate-pulse' : 'bg-transparent'} rounded-b-full`}
-                  ></div>
-                )}
-              </div>
-            ))}
-          </div>
-          
-          {/* Game grid */}
-          <div 
-            className="grid grid-cols-7 gap-1 bg-boardBlueDark rounded-md p-2 border-2 border-boardBlueDark"
-            role="grid"
-            aria-label="Connect Four game board"
-          >
-            {board.map((row, rowIndex) => (
-              row.map((cell, colIndex) => (
-                <GameCell 
-                  key={`${rowIndex}-${colIndex}`}
-                  value={cell}
-                  isWinningCell={winningCells.some(([r, c]) => r === rowIndex && c === colIndex)}
-                  isLastMove={lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex}
-                  onClick={() => handleColumnClick(colIndex)}
-                />
-              ))
-            ))}
+    <div className="flex flex-col md:flex-row items-start gap-4 w-full max-w-5xl mx-auto">
+      <div className="flex flex-col items-center w-full md:w-3/5">
+        <GameControls 
+          gameStatus={gameStatus} 
+          currentPlayer={currentPlayer} 
+          winner={winner} 
+          difficulty={difficulty} 
+          onReset={resetGame} 
+          onShowHint={handleShowHint} 
+          onDifficultyChange={handleDifficultyChange}
+          isAIThinking={isAIThinking}
+          onToggleMinimaxTree={toggleMinimaxTree}
+          showMinimaxTree={showMinimaxTree}
+        />
+        
+        <div className="w-full max-w-2xl mt-4 relative">
+          {/* Board frame */}
+          <div className="bg-gradient-to-b from-boardBlue to-boardBlueDark rounded-lg p-4 shadow-lg">
+            {/* Column hover indicators */}
+            <div className="grid grid-cols-7 mb-2">
+              {Array(7).fill(0).map((_, col) => (
+                <div 
+                  key={`indicator-${col}`} 
+                  className="flex justify-center"
+                >
+                  {gameStatus === 'playing' && currentPlayer === 1 && !isAIThinking && (
+                    <div 
+                      className={`w-2 h-6 ${showHint === col ? 'bg-yellow-300 animate-pulse' : 'bg-transparent'} rounded-b-full`}
+                    ></div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* Game grid */}
+            <div 
+              className="grid grid-cols-7 gap-1 bg-boardBlueDark rounded-md p-2 border-2 border-boardBlueDark"
+              role="grid"
+              aria-label="Connect Four game board"
+            >
+              {board.map((row, rowIndex) => (
+                row.map((cell, colIndex) => (
+                  <GameCell 
+                    key={`${rowIndex}-${colIndex}`}
+                    value={cell}
+                    isWinningCell={winningCells.some(([r, c]) => r === rowIndex && c === colIndex)}
+                    isLastMove={lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex}
+                    onClick={() => handleColumnClick(colIndex)}
+                  />
+                ))
+              ))}
+            </div>
           </div>
         </div>
+        
+        {/* Tutorial message for new players */}
+        {gameStatus === 'playing' && (
+          <div className="mt-4 text-sm text-gray-600 text-center">
+            {currentPlayer === 1 ? (
+              <p>Your turn! Click on a column to drop your piece.</p>
+            ) : (
+              <p>AI is thinking...</p>
+            )}
+          </div>
+        )}
       </div>
       
-      {/* Tutorial message for new players */}
-      {gameStatus === 'playing' && (
-        <div className="mt-4 text-sm text-gray-600 text-center">
-          {currentPlayer === 1 ? (
-            <p>Your turn! Click on a column to drop your piece.</p>
-          ) : (
-            <p>AI is thinking...</p>
-          )}
+      {/* Minimax Tree Visualization */}
+      {showMinimaxTree && (
+        <div className="w-full md:w-2/5 mt-4 md:mt-0 h-[500px] overflow-auto">
+          <MinimaxTree 
+            treeData={minimaxTree} 
+            maxDepth={difficulty === 'easy' ? 2 : difficulty === 'medium' ? 3 : 3} 
+          />
         </div>
       )}
     </div>
